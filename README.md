@@ -25,3 +25,6 @@ projeto-guardiao/
 └── README.md           # Documentação oficial do projeto
 ```
 
+# 👨‍💻 Autor
+## Weslley Gualberto do Carmo Silva
+Projeto desenvolvido como uma iniciativa de software autoral para gestão proativa e resiliência de sistemas computacionais.
