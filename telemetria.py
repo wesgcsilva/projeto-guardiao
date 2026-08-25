@@ -1,57 +1,61 @@
 import platform
 import psutil
 
-# [Seção 6.1 da v1.1] Limiares de criticidade para a Filtragem na Fonte
-# Se o uso ultrapassar estes valores, o sistema sinaliza uma anomalia.
-LIMIAR_CPU_CRITICO = 80.0    # 80% de uso da CPU
-LIMIAR_RAM_CRITICO = 85.0    # 85% de uso da RAM
-LIMIAR_DISCO_CRITICO = 90.0  # 90% de uso do Disco
+IS_WINDOWS = platform.system() == "Windows"
+if IS_WINDOWS:
+    import wmi
+
+# Limiares de criticidade (Filtragem na Fonte)
+LIMIAR_CPU_CRITICO = 85.0
+LIMIAR_RAM_CRITICO = 90.0
 
 def coletar_dados_sistema():
     """
-    [Módulo de Saúde e Diagnóstico - Seção 6.1 da v1.1]
-    Realiza a coleta passiva de hardware e aplica a filtragem na fonte 
-    para detecção precoce de anomalias de performance.
+    [Módulo de Saúde] Coleta métricas de CPU, RAM, Discos e status S.M.A.R.T. via WMI.
     """
     sistema = platform.system()
     versao = platform.release()
     
-    # Coleta métricas vitais
     uso_cpu = psutil.cpu_percent(interval=1)
-    
     memoria = psutil.virtual_memory()
-    memoria_total_gb = round(memoria.total / (1024 ** 3), 2)
-    memoria_uso_gb = round(memoria.used / (1024 ** 3), 2)
     
     disco_path = "C:\\" if sistema == "Windows" else "/"
     disco = psutil.disk_usage(disco_path)
-    disco_total_gb = round(disco.total / (1024 ** 3), 2)
-    disco_uso_gb = round(disco.used / (1024 ** 3), 2)
     
-    # --- FILTRAGEM NA FONTE (Lógica de Anomalias) ---
-    anomalia_detectada = False
-    status_alerta = "NORMAL"
+    # Consulta de Hardware Avançada (S.M.A.R.T. via WMI)
+    smart_status = "NÃO_SUPORTADO_OU_NAO_WINDOWS"
+    if IS_WINDOWS:
+        try:
+            c = wmi.WMI()
+            for disk in c.Win32_DiskDrive():
+                if hasattr(disk, 'Status') and disk.Status:
+                    smart_status = disk.Status
+                    break
+        except Exception:
+            smart_status = "INDISPONIVEL_WMI"
+
+    # Lógica de anomalia na fonte
+    anomalia = False
+    motivo = "NORMAL"
     
     if uso_cpu >= LIMIAR_CPU_CRITICO:
-        anomalia_detectada = True
-        status_alerta = "ALERTA_CPU_CRITICA"
+        anomalia = True
+        motivo = "CPU_CRITICA"
     elif memoria.percent >= LIMIAR_RAM_CRITICO:
-        anomalia_detectada = True
-        status_alerta = "ALERTA_RAM_CRITICA"
-    elif disco.percent >= LIMIAR_DISCO_CRITICO:
-        anomalia_detectada = True
-        status_alerta = "ALERTA_DISCO_CHEIO"
+        anomalia = True
+        motivo = "RAM_CRITICA"
+    elif smart_status not in ["OK", "NÃO_SUPORTADO_OU_NAO_WINDOWS"]:
+        anomalia = True
+        motivo = "ALERTA_SMART_DISCO"
 
-    # Retorna os dados enriquecidos com o estado de criticidade
     return {
         "sistema": f"{sistema} {versao}",
         "cpu_percent": uso_cpu,
-        "ram_uso_gb": memoria_uso_gb,
-        "ram_total_gb": memoria_total_gb,
+        "ram_uso_gb": round(memoria.used / (1024 ** 3), 2),
+        "ram_total_gb": round(memoria.total / (1024 ** 3), 2),
         "ram_percent": memoria.percent,
-        "disco_uso_gb": disco_uso_gb,
-        "disco_total_gb": disco_total_gb,
         "disco_percent": disco.percent,
-        "anomalia": anomalia_detectada,
-        "status_alerta": status_alerta
+        "smart_status": smart_status,
+        "anomalia": anomalia,
+        "motivo_anomalia": motivo
     }

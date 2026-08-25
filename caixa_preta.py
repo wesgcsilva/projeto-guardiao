@@ -3,51 +3,57 @@ import json
 from datetime import datetime
 from collections import deque
 
-# Configurações de resiliência e armazenamento
-TAMANHO_BUFFER = 10
-MAX_LINHAS_LOG = 50
-ARQUIVO_LOG = "guardiao_log.json"
+TAMANHO_BUFFER = 5  # Estritamente os últimos 5 eventos
+ARQUIVO_TEMPO_REAL = "guardiao_log.json"
+ARQUIVO_LONGO_PRAZO = "guardiao_longo_prazo.json"
 
-# [Seção 6.2 da v1.1] Memória de Curto Prazo (Buffer Cíclico na RAM)
+# Buffer volátil na RAM para manter os últimos ciclos
 buffer_volatil = deque(maxlen=TAMANHO_BUFFER)
 
-def gerenciar_limpeza_log():
-    """
-    Gerencia o arquivo de histórico (Memória de Longo Prazo) 
-    garantindo que ele não ultrapasse o limite máximo de linhas.
-    """
-    if not os.path.exists(ARQUIVO_LOG):
-        return
-        
-    try:
-        with open(ARQUIVO_LOG, "r", encoding="utf-8") as arquivo:
-            linhas = arquivo.readlines()
-            
-        if len(linhas) > MAX_LINHAS_LOG:
-            linhas_recentes = linhas[-MAX_LINHAS_LOG:]
-            with open(ARQUIVO_LOG, "w", encoding="utf-8") as arquivo:
-                arquivo.writelines(linhas_recentes)
-    except Exception:
-        pass
+def inicializar_caixa_preta():
+    """Limpa o log de curto prazo ao iniciar o programa (começa do zero)."""
+    if os.path.exists(ARQUIVO_TEMPO_REAL):
+        try:
+            os.remove(ARQUIVO_TEMPO_REAL)
+        except Exception:
+            pass
 
-def salvar_evento_caixa_preta(dados_telemetria):
+def registrar_ciclo_telemetria(dados_telemetria, eventos_software):
     """
-    Processa os dados coletados:
-    1. Adiciona o carimbo de data/hora (timestamp).
-    2. Guarda no buffer volátil da RAM.
-    3. Persiste de forma estruturada no arquivo JSON local.
+    Grava a telemetria atual no buffer volátil da RAM 
+    e atualiza o arquivo de curto prazo em tempo real.
     """
-    agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    dados_telemetria["timestamp"] = agora
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # 1. Adiciona ao Buffer Cíclico na RAM
-    buffer_volatil.append(dados_telemetria)
+    registro = {
+        "timestamp": timestamp,
+        "hardware": dados_telemetria,
+        "eventos_software": eventos_software
+    }
     
-    # 2. Persiste no arquivo JSON (Memória de Longo Prazo)
-    with open(ARQUIVO_LOG, "a", encoding="utf-8") as arquivo:
-        arquivo.write(json.dumps(dados_telemetria) + "\n")
-        
-    # 3. Executa a rotina de limpeza do arquivo
-    gerenciar_limpeza_log()
+    # Adiciona ao buffer da RAM
+    buffer_volatil.append(registro)
     
-    return agora, len(buffer_volatil)
+    # Escreve no log temporário de curto prazo
+    with open(ARQUIVO_TEMPO_REAL, "a", encoding="utf-8") as f:
+        f.write(json.dumps(registro) + "\n")
+
+def consolidar_fechamento_emergencia(motivo="ENCERRAMENTO_ABRUPTO"):
+    """
+    Chamado quando o sistema é interrompido ou detecta falha.
+    Salva estritamente os últimos 5 eventos do buffer no Longo Prazo.
+    """
+    if not buffer_volatil:
+        return
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    snapshot_incidente = {
+        "timestamp_fechamento": timestamp,
+        "motivo_fechamento": motivo,
+        "ultimos_eventos_registrados": list(buffer_volatil)
+    }
+    
+    # Salva no cofre de Longo Prazo
+    with open(ARQUIVO_LONGO_PRAZO, "a", encoding="utf-8") as f:
+        f.write(json.dumps(snapshot_incidente) + "\n")

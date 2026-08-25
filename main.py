@@ -1,28 +1,36 @@
 import time
 from telemetria import coletar_dados_sistema
-from caixa_preta import salvar_evento_caixa_preta, TAMANHO_BUFFER
+from correlacao import obter_eventos_criticos_software
+from caixa_preta import inicializar_caixa_preta, registrar_ciclo_telemetria, consolidar_fechamento_emergencia
+from analisador import exibir_relatorio_incidentes
 
-# Intervalo em segundos entre cada ciclo de monitoramento
 INTERVALO_SEGUNDOS = 2
 
 if __name__ == "__main__":
-    print("--- [Projeto Guardião v1.1] Núcleo Modular Iniciado ---")
-    print("Pressione Ctrl + C no terminal para encerrar o programa a qualquer momento.\n")
+    # Limpa o log temporário da sessão anterior
+    inicializar_caixa_preta()
+    
+    print("--- [Projeto Guardião v1.1] Núcleo Ativo ---")
+    print(f"Coletando telemetria a cada {INTERVALO_SEGUNDOS}s. Pressione Ctrl + C para simular falha/encerramento.\n")
     
     try:
         while True:
-            # 1. Executa o Estágio 1: Coleta de Telemetria
-            dados_atuais = coletar_dados_sistema()
+            telemetria = coletar_dados_sistema()
+            eventos_sw = obter_eventos_criticos_software()
             
-            # 2. Executa a resiliência (Buffer e Persistência na Caixa-Preta)
-            timestamp, eventos_no_buffer = salvar_evento_caixa_preta(dados_atuais)
+            # Registra no buffer e no arquivo de curto prazo
+            registrar_ciclo_telemetria(telemetria, eventos_sw)
             
-            # 3. Exibe o resumo no terminal de forma amigável
-            print(f"[{timestamp}] - CPU: {dados_atuais['cpu_percent']}% | RAM: {dados_atuais['ram_uso_gb']}GB ({dados_atuais['ram_percent']}%) | Disco: {dados_atuais['disco_uso_gb']}GB")
-            print(f"   [Buffer RAM]: {eventos_no_buffer}/{TAMANHO_BUFFER} eventos estruturados em memória.")
+            status_txt = f"ALERTA ({telemetria['motivo_anomalia']})" if telemetria['anomalia'] else "OK"
+            print(f"[{time.strftime('%H:%M:%S')}] Status: {status_txt} | CPU: {telemetria['cpu_percent']}% | RAM: {telemetria['ram_percent']}%", end="\r")
             
-            # Pausa antes da próxima verificação
             time.sleep(INTERVALO_SEGUNDOS)
             
     except KeyboardInterrupt:
-        print("\n--- [Projeto Guardião] Monitoramento encerrado pelo usuário. ---")
+        print("\n\n--- [Alerta do Sistema]: Interrupção detectada! Salvando caixa-preta... ---")
+        
+        # Consolida os últimos 5 eventos no longo prazo antes de morrer
+        consolidar_fechamento_emergencia(motivo="INTERRUPCAO_MANUAL_OU_QUEDA")
+        
+        # Chama o analisador para exibir o relatório gerado
+        exibir_relatorio_incidentes()
