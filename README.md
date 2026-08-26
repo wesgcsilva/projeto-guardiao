@@ -1,30 +1,30 @@
 # 🛡️ Projeto Guardião (v1.1)
 
-O **Projeto Guardião** é um software de monitoramento avançado, diagnóstico e segurança para computadores pessoais. Sua missão é desmistificar as falhas de hardware e software, oferecendo aos usuários uma compreensão clara e acionável sobre a saúde de seus sistemas, atuando como uma verdadeira "caixa-preta" para o PC.
+O **Projeto Guardião** é um software de monitoramento de hardware, correlação de software e diagnóstico de falhas para computadores pessoais. Atuando como uma verdadeira "caixa-preta", ele registra a saúde do sistema em tempo real e analisa eventos críticos para antecipar problemas.
 
 ---
 
-## 🚀 Sobre o Projeto
-Computadores modernos são ecossistemas complexos propensos a reinicializações inesperadas, telas azuis (BSOD) e degradação de performance. Ferramentas nativas costumam ser crípticas e focadas em dados brutos e difíceis de interpretar. O Guardião preenche essa lacuna unificando:
-- **Monitoramento Passivo de Saúde:** Acompanhamento contínuo de CPU, Memória RAM e Armazenamento.
-- **Resiliência de Dados (Caixa-Preta):** Buffer em memória volátil (RAM) e persistência estruturada em formato JSON com rotação automática de logs.
-- **Arquitetura Modular:** Separação limpa entre a coleta de dados, a gestão da caixa-preta e a execução principal.
+## 🚀 Funcionalidades Principais
+- **Telemetria via API Web:** Leitura precisa de temperatura, uso, tensões (VCore) e ventoinhas através do servidor local do *LibreHardwareMonitor*.
+- **Correlação de Eventos do Windows:** Captura e categoriza logs do sistema (como erros e avisos do Visualizador de Eventos).
+- **Sistema de Caixa-Preta:** Buffer rotativo em memória e persistência de longo prazo para rastrear o exato momento antes de uma falha ou interrupção.
+- **Módulo Analisador:** Exibe relatórios detalhados com sumário estatístico dos incidentes e códigos de erro.
 
 ---
 
 ## 📂 Estrutura Modular do Código
-A versão atual (`v1.1`) está organizada em módulos independentes para garantir alta manutenibilidade e escalabilidade:
+A versão atual está organizada nos seguintes módulos independentes:
 
 ```text
 projeto-guardiao/
 │
-├── main.py             # Orquestrador central (executa o loop contínuo)
-├── telemetria.py       # Módulo de coleta passiva de dados de hardware
-├── caixa_preta.py      # Gestão do buffer volátil (RAM) e logs JSON
-├── .gitignore          # Arquivos e pastas ignoradas pelo Git
+├── main.py             # Orquestrador central (loop contínuo e dashboard)
+├── telemetria.py       # Coleta de hardware via API JSON do LibreHardwareMonitor
+├── correlacao.py       # Leitura e filtragem de eventos do Visualizador do Windows
+├── caixa_preta.py      # Gestão do buffer volátil e persistência em JSON
+├── analisador.py       # Exibição do relatório pós-falha e sumário estatístico
 └── README.md           # Documentação oficial do projeto
 ```
 
-# 👨‍💻 Autor
-## Weslley Gualberto do Carmo Silva
-Projeto desenvolvido como uma iniciativa de software autoral para gestão proativa e resiliência de sistemas computacionais.
+## Projeto desenvolvido como uma iniciativa de software autoral para gestão proativa e resiliência de sistemas computacionais.
+👨‍💻 Autor:  Weslley Gualberto do Carmo Silva
