@@ -1,9 +1,14 @@
 import time
 import os
 from telemetria import coletar_dados_sistema
-from caixa_preta import salvar_evento_caixa_preta, TAMANHO_BUFFER
+from correlacao import obter_eventos_criticos_software
+from caixa_preta import (
+    inicializar_caixa_preta, 
+    registrar_ciclo_telemetria, 
+    consolidar_fechamento_emergencia
+)
+from analisador import exibir_relatorio_incidentes
 
-# Intervalo em segundos entre cada ciclo de monitoramento
 INTERVALO_SEGUNDOS = 2
 
 def limpar_tela():
@@ -11,22 +16,6 @@ def limpar_tela():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 if __name__ == "__main__":
-<<<<<<< Updated upstream
-    print("--- [Projeto Guardião v1.1] Núcleo Modular Iniciado ---")
-    print("Pressione Ctrl + C no terminal para encerrar o programa a qualquer momento.\n")
-    
-    try:
-        while True:
-            # 1. Executa o Estágio 1: Coleta de Telemetria
-            dados_atuais = coletar_dados_sistema()
-            
-            # 2. Executa a resiliência (Buffer e Persistência na Caixa-Preta)
-            timestamp, eventos_no_buffer = salvar_evento_caixa_preta(dados_atuais)
-            
-            # 3. Exibe o resumo no terminal de forma amigável
-            print(f"[{timestamp}] - CPU: {dados_atuais['cpu_percent']}% | RAM: {dados_atuais['ram_uso_gb']}GB ({dados_atuais['ram_percent']}%) | Disco: {dados_atuais['disco_uso_gb']}GB")
-            print(f"   [Buffer RAM]: {eventos_no_buffer}/{TAMANHO_BUFFER} eventos estruturados em memória.")
-=======
     inicializar_caixa_preta()
     
     try:
@@ -35,10 +24,15 @@ if __name__ == "__main__":
             eventos_sw = obter_eventos_criticos_software()
             registrar_ciclo_telemetria(telemetria, eventos_sw)
             
-            status_txt = f"🚨 {telemetria['motivo_anomalia']}" if telemetria['anomalia'] else "✅ NORMAL"
+            if telemetria['anomalia']:
+                status_txt = f"🔴 CRÍTICO ({telemetria['motivo_anomalia']})"
+            elif eventos_sw:
+                status_txt = "🟡 ATENÇÃO (Avisos detectados)"
+            else:
+                status_txt = "🟢 NORMAL"
+
             hora = time.strftime('%H:%M:%S')
             
-            # Limpa a tela e desenha o novo painel
             limpar_tela()
             print("--- [Projeto Guardião v1.1] Dashboard Avançado de Diagnóstico ---")
             print(f"Atualizado às: {hora} | Status do Sistema: {status_txt}")
@@ -57,21 +51,26 @@ if __name__ == "__main__":
             print(f"Disco Uso: {telemetria['disco_percent']}% | S.M.A.R.T: {telemetria['smart_status']}")
             print("=" * 65)
             
+            # Preview Detalhado de Alertas do Windows
             if eventos_sw:
                 print(f"⚠️ Alertas do Windows: {len(eventos_sw)} encontrados.")
+                for ev in eventos_sw:
+                    tipo_ev = ev.get('tipo', 'AVISO').upper()
+                    codigo = ev.get('codigo', 'N/A')
+                    origem = ev.get('origem', 'Desconhecida')
+                    icone = "🔴" if tipo_ev == "ERRO" else "🟡"
+                    print(f"   {icone} [{hora}] {tipo_ev} - Código: {codigo} | Origem: {origem}")
+                print("=" * 65)
+            else:
+                print("✅ Nenhum alerta crítico de software detectado no ciclo atual.")
+                print("=" * 65)
             
             print("\nPressione Ctrl + C para simular falha e abrir o Relatório da Caixa-Preta.")
->>>>>>> Stashed changes
             
-            # Pausa antes da próxima verificação
             time.sleep(INTERVALO_SEGUNDOS)
             
     except KeyboardInterrupt:
-<<<<<<< Updated upstream
-        print("\n--- [Projeto Guardião] Monitoramento encerrado pelo usuário. ---")
-=======
         limpar_tela()
         print("\n\n--- [Alerta do Sistema]: Interrupção detectada! Salvando caixa-preta... ---")
         consolidar_fechamento_emergencia(motivo="INTERRUPCAO_MANUAL_OU_QUEDA")
         exibir_relatorio_incidentes()
->>>>>>> Stashed changes

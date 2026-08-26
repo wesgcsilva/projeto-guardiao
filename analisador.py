@@ -1,34 +1,27 @@
 import json
 import os
 
-ARQUIVO_LOG = "guardiao_log.json"
+ARQUIVO_LOG_LONGO = "guardiao_longo_prazo.json"
 
-def ler_ultimos_eventos(limite=5):
+def exibir_relatorio_incidentes(limite=3):
     """
-    Lê o arquivo de log JSON estruturado e retorna os últimos eventos registrados,
-    incluindo os dados de anomalia gerados pela filtragem na fonte.
+    [Módulo de Análise] Lê o log de longo prazo e exibe os incidentes.
+    Agora inclui a origem do erro e um resumo estatístico das falhas.
     """
-    if not os.path.exists(ARQUIVO_LOG):
-        print("[Aviso]: Nenhum arquivo de log encontrado. Execute o 'main.py' primeiro.")
-        return []
+    if not os.path.exists(ARQUIVO_LOG_LONGO):
+        print("\n[Analisador]: Nenhum incidente registrado no longo prazo.")
+        return
 
     eventos = []
     try:
-        # Abre o arquivo de log linha por linha (JSON Lines)
-        with open(ARQUIVO_LOG, "r", encoding="utf-8") as arquivo:
+        with open(ARQUIVO_LOG_LONGO, "r", encoding="utf-8") as arquivo:
             for linha in arquivo:
                 if linha.strip():
-                    # Converte o texto JSON de volta para dicionário Python
-                    evento = json.loads(linha.strip())
-                    eventos.append(evento)
-    except Exception as erro:
-        print(f"[Erro]: Não foi possível ler os logs. Detalhes: {erro}")
-        return []
+                    eventos.append(json.loads(linha.strip()))
+    except Exception as e:
+        print(f"[Erro ao ler longo prazo]: {e}")
+        return
 
-<<<<<<< Updated upstream
-    # Retorna apenas a quantidade solicitada dos eventos mais recentes
-    return eventos[-limite:]
-=======
     ultimos = eventos[-limite:]
     print(f"\n================ RELATÓRIO DA CAIXA-PRETA (Longo Prazo) ================")
     print(f"Exibindo os últimos {len(ultimos)} incidentes consolidados:\n")
@@ -38,46 +31,46 @@ def ler_ultimos_eventos(limite=5):
         print(f"🚨 Motivo: {inc.get('motivo_fechamento')}")
         print(f"📊 Histórico dos últimos momentos antes da falha:")
         
+        # Dicionário para contabilizar os erros
+        resumo_alertas = {} 
+        
         for reg in inc.get('ultimos_eventos_registrados', []):
             hw = reg.get('hardware', {})
+            sw = reg.get('eventos_software', [])
             timestamp_reg = reg.get('timestamp', 'Desconhecido')
             
-            # Buscando as métricas no JSON
             cpu = hw.get('cpu_percent', 0)
+            temp = hw.get('temp_cpu_celsius', 'N/A')
             ram = hw.get('ram_percent', 0)
-            temp = hw.get('temp_cpu_celsius', 'N/A') # Pega a temperatura ou mostra N/A
-            motivo = hw.get('motivo_anomalia', 'NORMAL')
+            motivo_hw = hw.get('motivo_anomalia', 'NORMAL')
             
-            # Exibição atualizada e alinhada
-            print(f"   - [{timestamp_reg}] CPU: {cpu}% | Temp: {temp}°C | RAM: {ram}% | Status: {motivo}")
+            alertas_txt = ""
+            if sw:
+                lista_alertas = []
+                for ev in sw:
+                    tipo = ev.get('tipo', 'AVISO').upper()
+                    codigo = ev.get('codigo', 'N/A')
+                    origem = ev.get('origem', 'N/A')
+                    icone = "🔴" if tipo == "ERRO" else "🟡"
+                    
+                    # Formata a string com Código e Origem
+                    alerta_formatado = f"{icone} {tipo} {codigo} ({origem})"
+                    lista_alertas.append(alerta_formatado)
+                    
+                    # Contabiliza no resumo
+                    resumo_alertas[alerta_formatado] = resumo_alertas.get(alerta_formatado, 0) + 1
+                    
+                alertas_txt = f" | Sw_Alerta: {', '.join(lista_alertas)}"
+            
+            print(f"   - [{timestamp_reg}] CPU: {cpu}% | Temp: {temp}°C | RAM: {ram}% | Hw_Status: {motivo_hw}{alertas_txt}")
+        
+        # Exibe o Quadro de Resumo se houver alertas
+        if resumo_alertas:
+            print(f"\n   📋 RESUMO DE ALERTAS DE SOFTWARE NESTE INCIDENTE:")
+            for alerta, qtd in resumo_alertas.items():
+                print(f"      -> {alerta}: {qtd} ocorrência(s)")
+                
         print("-" * 65)
->>>>>>> Stashed changes
 
 if __name__ == "__main__":
-    print("--- [Projeto Guardião] Módulo Analisador de Logs & Anomalias ---")
-    
-    # Define quantos eventos recentes deseja consultar
-    quantidade = 5
-    ultimos_registros = ler_ultimos_eventos(quantidade)
-    
-    if ultimos_registros:
-        print(f"\nExibindo os últimos {len(ultimos_registros)} registros da caixa-preta:\n")
-        for ev in ultimos_registros:
-            # Verifica se o evento possui os dados de anomalia (compatibilidade com logs antigos)
-            anomalia = ev.get('anomalia', False)
-            status = ev.get('status_alerta', 'NORMAL')
-            
-            # Formata a exibição do status visualmente
-            if anomalia:
-                status_formatado = f"🚨 ALERTA CRÍTICO: {status}"
-            else:
-                status_formatado = f"✅ Status: {status}"
-            
-            print(f"🕒 [{ev['timestamp']}] | {status_formatado}")
-            print(f"   💻 Sistema: {ev['sistema']}")
-            print(f"   🔥 CPU: {ev['cpu_percent']}%")
-            print(f"   🧠 RAM: {ev['ram_uso_gb']}GB / {ev['ram_total_gb']}GB ({ev['ram_percent']}%)")
-            print(f"   💾 Disco C: {ev['disco_uso_gb']}GB ({ev['disco_percent']}%)")
-            print("-" * 60)
-    else:
-        print("Nenhum dado disponível para análise no momento.")
+    exibir_relatorio_incidentes()
